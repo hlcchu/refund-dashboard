@@ -1,3 +1,6 @@
+import struct
+from collections.abc import Callable
+
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -20,7 +23,31 @@ SQLITE_APPEND_ONLY_TRIGGERS = (
 )
 
 
-def make_engine(url: str) -> Engine:
+SQL_COPT_SS_ACCESS_TOKEN = 1256  # msodbcsql pre-connect attribute for an Entra access token
+SQL_ENTRA_SCOPE = "https://database.windows.net/.default"
+
+
+def odbc_token_struct(token: str) -> bytes:
+    raw = token.encode("utf-16-le")
+    return struct.pack(f"<I{len(raw)}s", len(raw), raw)
+
+
+def inject_entra_token(cparams: dict, token_provider: Callable[[], str]) -> None:
+    attrs = dict(cparams.get("attrs_before") or {})
+    attrs[SQL_COPT_SS_ACCESS_TOKEN] = odbc_token_struct(token_provider())
+    cparams["attrs_before"] = attrs
+
+
+def managed_identity_token_provider(client_id: str) -> Callable[[], str]:
+    # The ODBC driver's built-in ActiveDirectoryMsi only knows the VM IMDS endpoint, which
+    # Azure Container Apps does not expose; azure-identity handles IDENTITY_ENDPOINT as well.
+    from azure.identity import ManagedIdentityCredential
+
+    credential = ManagedIdentityCredential(client_id=client_id)
+    return lambda: credential.get_token(SQL_ENTRA_SCOPE).token
+
+
+def make_engine(url: str, sql_token_provider: Callable[[], str] | None = None) -> Engine:
     kwargs: dict = {}
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
@@ -35,6 +62,12 @@ def make_engine(url: str) -> Engine:
             cur = dbapi_conn.cursor()
             cur.execute("PRAGMA foreign_keys=ON")
             cur.close()
+
+    if engine.dialect.name == "mssql" and sql_token_provider is not None:
+
+        @event.listens_for(engine, "do_connect")
+        def _entra_token(_dialect, _record, _cargs, cparams):
+            inject_entra_token(cparams, sql_token_provider)
 
     return engine
 

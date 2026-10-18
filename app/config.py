@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./refunds.db"
     # SQLite/dev only. In Azure SQL the schema (incl. ledger tables) comes from infra/sql.
     auto_create_schema: bool = True
+    # Azure SQL: client ID of the user-assigned managed identity used to fetch Entra access tokens.
+    sql_managed_identity_client_id: str | None = None
 
     auth_mode: Literal["entra", "dev"] = "dev"
     entra_tenant_id: str | None = None

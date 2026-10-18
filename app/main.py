@@ -7,7 +7,12 @@ from fastapi.staticfiles import StaticFiles
 
 from app.auth import DevTokenIssuer, entra_validator
 from app.config import Settings, get_settings
-from app.db import create_schema, make_engine, make_session_factory
+from app.db import (
+    create_schema,
+    make_engine,
+    make_session_factory,
+    managed_identity_token_provider,
+)
 from app.routers import admin, audit, identity, refunds
 from app.seed import seed_demo_data
 from app.services import DomainError
@@ -38,7 +43,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
 
-    engine = make_engine(settings.database_url)
+    token_provider = (
+        managed_identity_token_provider(settings.sql_managed_identity_client_id)
+        if settings.sql_managed_identity_client_id
+        else None
+    )
+    engine = make_engine(settings.database_url, sql_token_provider=token_provider)
     if settings.auto_create_schema:
         create_schema(engine)
     app.state.engine = engine
