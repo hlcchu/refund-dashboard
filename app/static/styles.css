@@ -1,0 +1,50 @@
+[hidden] { display: none !important; }
+:root { font-family: system-ui, sans-serif; color: #1d2433; background: #f5f7fa; }
+body { margin: 0; }
+header { display: flex; justify-content: space-between; align-items: center;
+  padding: .75rem 1.5rem; background: #0f4c81; color: #fff; }
+header h1 { font-size: 1.25rem; margin: 0; }
+#identity { display: flex; gap: .75rem; align-items: center; }
+.chip { background: #ffffff26; border-radius: 999px; padding: .1rem .55rem; font-size: .8rem; margin-left: .25rem; }
+main { padding: 1rem 1.5rem; display: grid; gap: 1.25rem; }
+section { background: #fff; border-radius: 8px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px #0002; }
+section.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; background: none; box-shadow: none; padding: 0; }
+.card { background: #fff; border-radius: 8px; padding: .9rem 1.1rem; box-shadow: 0 1px 3px #0002; border-top: 4px solid #c7ccd6; }
+.card.PENDING { border-color: #f5b400; } .card.APPROVED { border-color: #12b76a; }
+.card.REJECTED { border-color: #d92d20; } .card.CANCELLED { border-color: #98a2b3; }
+.card .label { font-size: .8rem; text-transform: uppercase; color: #667; letter-spacing: .04em; }
+.card .count { font-size: 1.8rem; font-weight: 700; }
+.card .total { color: #475467; font-size: .9rem; }
+h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
+h2 small { color: #667; font-weight: normal; font-size: .8rem; margin-left: .35rem; }
+.row { display: flex; gap: .75rem; align-items: center; margin-bottom: .5rem; }
+.row h2 { margin: 0; flex: 0 0 auto; }
+form { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+label { display: flex; gap: .4rem; align-items: center; }
+input, select, button { font: inherit; padding: .4rem .6rem; border: 1px solid #c7ccd6; border-radius: 6px; }
+input.wide { flex: 1 1 20rem; }
+button { background: #0f4c81; color: #fff; border: none; cursor: pointer; }
+button.secondary { background: #e7ebf1; color: #1d2433; }
+button.danger { background: #b42318; }
+button.link { background: none; color: #0f4c81; padding: 0; text-decoration: underline; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid #eceff4; vertical-align: top; }
+td.actions { white-space: nowrap; }
+td.actions button { margin-right: .3rem; }
+.badge { padding: .1rem .5rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.badge.PENDING { background: #fff4d6; color: #8a5a00; }
+.badge.APPROVED { background: #dcfae6; color: #067647; }
+.badge.REJECTED { background: #fee4e2; color: #b42318; }
+.badge.CANCELLED { background: #eceff4; color: #475467; }
+code { font-size: .8rem; color: #667; word-break: break-all; }
+.hint { color: #667; font-size: .85rem; margin: .5rem 0 1rem; }
+#banner, #demo-note { margin: 1rem 1.5rem 0; padding: .6rem 1rem; border-radius: 6px; }
+#demo-note { background: #eef4ff; color: #3538cd; font-size: .9rem; }
+#banner.error { background: #fee4e2; color: #b42318; }
+#banner.ok { background: #dcfae6; color: #067647; }
+.valid { color: #067647; font-weight: 600; }
+.invalid { color: #b42318; font-weight: 600; }
+dialog { border: none; border-radius: 8px; box-shadow: 0 10px 30px #0004; min-width: 32rem; max-width: 50rem; }
+dialog ol { padding-left: 1.2rem; } dialog li { margin-bottom: .6rem; }
+footer { padding: 0 1.5rem 1.5rem; color: #667; font-size: .85rem; }
+@media (max-width: 800px) { section.cards { grid-template-columns: repeat(2, 1fr); } }

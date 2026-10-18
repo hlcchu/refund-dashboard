@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest
+
+  bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: az bicep install
+      - run: az bicep build --file infra/main.bicep --stdout > /dev/null
+      - run: az bicep build-params --file infra/main.bicepparam --stdout > /dev/null
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t refund-dashboard:ci .
+      - name: Smoke test container
+        run: |
+          docker run -d --name app -p 8000:8000 \
+            -e REFUND_ENVIRONMENT=development -e REFUND_AUTH_MODE=dev \
+            -e REFUND_AUTO_CREATE_SCHEMA=true -e REFUND_DATABASE_URL=sqlite:////data/refunds.db \
+            -e REFUND_SEED_DEMO_DATA=true -e WEB_CONCURRENCY=1 refund-dashboard:ci
+          for i in $(seq 1 20); do curl -fs localhost:8000/healthz && break; sleep 1; done
+          curl -fs localhost:8000/ > /dev/null

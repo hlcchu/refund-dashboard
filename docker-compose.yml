@@ -1,0 +1,20 @@
+# Local demo: one container, SQLite, built-in demo users (no Azure or Entra needed).
+#   docker compose up --build   ->   http://localhost:8000
+services:
+  refund-dashboard:
+    build: .
+    image: refund-dashboard:local
+    ports:
+      - "8000:8000"
+    environment:
+      REFUND_ENVIRONMENT: development
+      REFUND_AUTH_MODE: dev
+      REFUND_AUTO_CREATE_SCHEMA: "true"
+      REFUND_DATABASE_URL: sqlite:////data/refunds.db
+      REFUND_SEED_DEMO_DATA: "true"
+      # Dev tokens are signed with a per-process key, so the demo must run a single worker.
+      WEB_CONCURRENCY: "1"
+    volumes:
+      - refund-data:/data
+volumes:
+  refund-data:

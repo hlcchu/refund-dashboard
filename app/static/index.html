@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Refund Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>Refund Dashboard</h1>
+    <div id="identity">
+      <label id="dev-login" hidden>Demo user
+        <select id="dev-user"></select>
+      </label>
+      <span id="whoami"></span>
+      <button id="sign-in" type="button" class="secondary" hidden>Sign in with Microsoft</button>
+      <button id="sign-out" type="button" class="secondary" hidden>Sign out</button>
+    </div>
+  </header>
+
+  <div id="demo-note" hidden>Local demo mode: tokens are minted by the app for the selected demo user. In Azure, sign-in is via Microsoft Entra ID.</div>
+  <div id="banner" role="alert" hidden></div>
+
+  <main>
+    <section id="summary-section" class="cards" hidden></section>
+
+    <section id="create-section" hidden>
+      <h2>Raise refund <small>Maker</small></h2>
+      <form id="create-form">
+        <input name="customer_id" placeholder="Customer ID" required maxlength="64">
+        <input name="order_ref" placeholder="Order ref" required maxlength="64">
+        <input name="amount" placeholder="Amount e.g. 49.99" required inputmode="decimal">
+        <input name="currency" placeholder="Currency" value="USD" required maxlength="3" size="4">
+        <input name="reason" placeholder="Reason" required minlength="5" maxlength="1000" class="wide">
+        <button type="submit">Submit for approval</button>
+      </form>
+      <p class="hint" id="limits-hint"></p>
+    </section>
+
+    <section id="list-section" hidden>
+      <div class="row">
+        <h2>Refunds</h2>
+        <select id="status-filter" aria-label="Status filter">
+          <option value="">All</option>
+          <option value="PENDING" selected>Pending</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <button id="refresh" type="button" class="secondary">Refresh</button>
+        <button id="export" type="button" class="secondary" hidden>Export CSV</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Created</th><th>Customer / Order</th><th>Amount</th><th>Reason</th>
+            <th>Maker</th><th>Status</th><th>Approvals</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="refund-rows"></tbody>
+      </table>
+    </section>
+
+    <section id="audit-section" hidden>
+      <div class="row">
+        <h2>Audit trail <small>Finance</small></h2>
+        <button id="verify" type="button">Verify hash chain</button>
+        <span id="verify-result"></span>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>When (UTC)</th><th>Actor</th><th>Roles</th><th>Action</th>
+          <th>Entity</th><th>Details</th><th>Hash</th></tr></thead>
+        <tbody id="audit-rows"></tbody>
+      </table>
+    </section>
+
+    <section id="admin-section" hidden>
+      <h2>Settings <small>Admin</small></h2>
+      <form id="settings-form">
+        <label>Two checkers required above
+          <input name="dual_approval_threshold" required inputmode="decimal" size="10"></label>
+        <label>Maximum per refund
+          <input name="max_refund_amount" required inputmode="decimal" size="10"></label>
+        <button type="submit">Save (audited)</button>
+      </form>
+      <p class="hint" id="settings-meta"></p>
+      <h2>Users seen <small>roles are assigned in Microsoft Entra ID</small></h2>
+      <table>
+        <thead><tr><th>Name</th><th>Roles (latest token)</th><th>Last action</th><th>Last seen (UTC)</th></tr></thead>
+        <tbody id="user-rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <dialog id="history-dialog">
+    <div class="row"><h2 id="history-title">History</h2>
+      <button type="button" class="secondary" id="history-close">Close</button></div>
+    <ol id="history-list"></ol>
+  </dialog>
+
+  <footer>Buttons are shown by role for convenience only &mdash; every action is re-authorised by the API.</footer>
+</body>
+</html>

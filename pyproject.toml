@@ -1,0 +1,20 @@
+[project]
+name = "refund-dashboard"
+version = "0.1.0"
+description = "Refund approval dashboard with maker-checker controls, Entra ID RBAC and an immutable audit trail"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]
