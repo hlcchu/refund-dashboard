@@ -125,9 +125,12 @@ Entra ID (sign-in, app roles) ──> Container Apps (API + UI, managed identity
 1. `infra/entra/setup-app-registration.sh`: creates the app registration with the four app
    roles, the `Refunds.Access` scope and the SPA redirect URI.
 2. `RG=... LOCATION=... ENTRA_CLIENT_ID=... SQL_ADMIN_GROUP_ID=... SQL_ADMIN_GROUP_NAME=... infra/deploy.sh`:
-   deploys the infrastructure, builds the image in ACR with `az acr build`, then deploys the
-   Container App.
-3. Run `infra/sql/001_schema.sql`, then `002_app_user.sql` (grants with no DELETE), add the app URL
+   deploys the infrastructure, builds the image in ACR with `az acr build` (falling back to local
+   Docker where ACR Tasks are blocked, as on new/trial subscriptions), then deploys the Container
+   App. If the region refuses new SQL servers (e.g. East US on new subscriptions), add
+   `SQL_LOCATION=centralus`.
+3. Run `infra/sql/001_schema.sql`, then `002_app_user.sql` (grants with no DELETE; the user is
+   created from the identity's client ID, so no Directory Readers role is needed), add the app URL
    as a redirect URI, and assign users or groups to roles.
 4. Lock the WORM policy once verified. Locking is irreversible.
 
