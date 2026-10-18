@@ -169,12 +169,17 @@ async function act(refund, action) {
     } else {
       body = undefined;
     }
-    await api(`/api/refunds/${refund.id}/${action}`, {
+    const updated = await api(`/api/refunds/${refund.id}/${action}`, {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
     });
-    const done = { approve: "approved", reject: "rejected", cancel: "cancelled" }[action];
-    banner(`Refund ${done}.`, "ok");
+    if (action === "approve" && updated.status === "PENDING") {
+      const n = updated.approvals.length;
+      banner(`Approval ${n}/${updated.required_approvals} recorded; a different checker must also approve.`, "ok");
+    } else {
+      const done = { approve: "approved", reject: "rejected", cancel: "cancelled" }[action];
+      banner(`Refund ${done}.`, "ok");
+    }
   } catch (e) {
     banner(e.message);
   }

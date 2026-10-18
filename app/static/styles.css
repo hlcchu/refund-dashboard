@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 :root { font-family: system-ui, sans-serif; color: #1d2433; background: #f5f7fa; }
 body { margin: 0; }
 header { display: flex; justify-content: space-between; align-items: center;
