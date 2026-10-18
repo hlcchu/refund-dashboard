@@ -1,0 +1,38 @@
+[
+  {
+    "allowedMemberTypes": [
+      "User"
+    ],
+    "displayName": "Refund Maker",
+    "description": "Raise refund requests and cancel their own pending requests.",
+    "isEnabled": true,
+    "value": "Refund.Maker"
+  },
+  {
+    "allowedMemberTypes": [
+      "User"
+    ],
+    "displayName": "Refund Checker",
+    "description": "Approve or reject refund requests raised by someone else.",
+    "isEnabled": true,
+    "value": "Refund.Checker"
+  },
+  {
+    "allowedMemberTypes": [
+      "User"
+    ],
+    "displayName": "Refund Finance",
+    "description": "Read-only: all refunds, summaries, CSV export, audit trail and integrity check.",
+    "isEnabled": true,
+    "value": "Refund.Finance"
+  },
+  {
+    "allowedMemberTypes": [
+      "User"
+    ],
+    "displayName": "Refund Admin",
+    "description": "Change refund limits (audited) and view role usage. Cannot raise, approve or view refunds.",
+    "isEnabled": true,
+    "value": "Refund.Admin"
+  }
+]
