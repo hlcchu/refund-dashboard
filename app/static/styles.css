@@ -26,6 +26,10 @@ input.wide { flex: 1 1 20rem; }
 button { background: #0f4c81; color: #fff; border: none; cursor: pointer; }
 button.secondary { background: #e7ebf1; color: #1d2433; }
 button.danger { background: #b42318; }
+#text-dialog { border: 1px solid #c7ccd6; border-radius: 8px; padding: 1rem; width: min(28rem, 90vw); }
+#text-dialog form { display: flex; flex-direction: column; gap: .6rem; }
+#text-dialog textarea { font: inherit; padding: .4rem .6rem; border: 1px solid #c7ccd6; border-radius: 6px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; }
 button.link { background: none; color: #0f4c81; padding: 0; text-decoration: underline; }
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid #eceff4; vertical-align: top; }

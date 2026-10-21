@@ -99,5 +99,15 @@
   </dialog>
 
   <footer>Buttons are shown by role for convenience only &mdash; every action is re-authorised by the API.</footer>
+  <dialog id="text-dialog">
+    <form method="dialog" id="text-dialog-form">
+      <label for="text-dialog-input" id="text-dialog-label"></label>
+      <textarea id="text-dialog-input" rows="3" maxlength="1000"></textarea>
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="text-dialog-cancel">Cancel</button>
+        <button type="submit" id="text-dialog-ok">OK</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>
