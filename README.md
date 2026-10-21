@@ -140,8 +140,7 @@ Entra ID (sign-in, app roles) ──> Container Apps (API + UI, managed identity
 The parameters are in `infra/main.bicepparam`, e.g. `minReplicas`, SQL SKU, threshold,
 `backupRetentionYears` (default 6) and `alertEmail`. Before production, work through
 [docs/path-to-production.md](docs/path-to-production.md): network lockdown, Entra roles, locking
-WORM, and teardown of long-term backups. Design choices are recorded in
-[docs/decisions.md](docs/decisions.md).
+WORM, and teardown of long-term backups.
 
 ## Cost
 

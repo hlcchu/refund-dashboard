@@ -3,8 +3,7 @@
 The templates in `infra/` give a working, secure-by-default deployment: Entra-only sign-in,
 managed identities with no secrets, an append-only ledger and WORM storage. They're tuned for a
 demo or pilot. This page lists what to add before production. The network items are left out of
-the templates because the customer hasn't confirmed an Azure deployment (see
-[decisions.md](decisions.md) #13).
+the templates because the customer hasn't confirmed an Azure deployment.
 
 ## 1. Identity and access
 
@@ -67,7 +66,8 @@ header.
 - [ ] **Lock the WORM immutability policy** on container `sqldbledgerdigests` once the deployment
       is verified (`az storage container immutability-policy lock`). Locking is irreversible.
 - [ ] Confirm the 6-year retention (`backupRetentionYears`, `ledgerDigestRetentionDays`) with
-      the customer's finance and legal teams. See [decisions.md](decisions.md) #9.
+      the customer's finance and legal teams. Six years matches the IRS look-back period; some
+      cases (e.g. bad-debt claims) need 7.
 - [ ] The first yearly long-term backup is taken in the first week of January. Until then,
       restore relies on the 7-day point-in-time window.
 - [ ] Schedule `infra/sql/verify_ledger.sql`, e.g. monthly. It checks the database against the

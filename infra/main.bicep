@@ -48,7 +48,7 @@ param dualApprovalThreshold string = '50.00'
 
 param maxRefundAmount string = '50000.00'
 
-@description('Years to keep yearly full backups of the refund database (long-term retention). 0 disables. See docs/decisions.md.')
+@description('Years to keep yearly full backups of the refund database (long-term retention). 0 disables. Default 6 = IRS look-back period.')
 @minValue(0)
 @maxValue(10)
 param backupRetentionYears int = 6
