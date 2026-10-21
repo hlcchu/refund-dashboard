@@ -157,15 +157,48 @@ async function loadLimitsHint() {
     `Maximum per refund: ${l.max_refund_amount}. Requests can't be edited after submission.`;
 }
 
+// In-page replacement for window.prompt(), which embedded browsers can silently block.
+function askText(label, { minLength = 0, okLabel = "OK" } = {}) {
+  const dialog = $("text-dialog");
+  const input = $("text-dialog-input");
+  $("text-dialog-label").textContent = label;
+  $("text-dialog-ok").textContent = okLabel;
+  input.value = "";
+  input.required = minLength > 0;
+  input.minLength = minLength;
+  return new Promise((resolve) => {
+    const finish = (value) => {
+      $("text-dialog-form").onsubmit = null;
+      $("text-dialog-cancel").onclick = null;
+      dialog.oncancel = null;
+      dialog.close();
+      resolve(value);
+    };
+    $("text-dialog-form").onsubmit = (e) => {
+      e.preventDefault();
+      finish(input.value.trim());
+    };
+    $("text-dialog-cancel").onclick = () => finish(null);
+    dialog.oncancel = (e) => {
+      e.preventDefault();
+      finish(null);
+    };
+    dialog.showModal();
+    input.focus();
+  });
+}
+
 async function act(refund, action) {
   try {
     let body = { expected_version: refund.version };
     if (action === "reject") {
-      const reason = prompt("Rejection reason (min 5 characters):");
-      if (!reason) return;
+      const reason = await askText("Rejection reason (min 5 characters):", { minLength: 5, okLabel: "Reject" });
+      if (reason === null) return;
       body.reason = reason;
     } else if (action === "approve") {
-      body.comment = prompt("Optional approval comment:") || null;
+      const comment = await askText("Optional approval comment:", { okLabel: "Approve" });
+      if (comment === null) return;
+      body.comment = comment || null;
     } else {
       body = undefined;
     }
