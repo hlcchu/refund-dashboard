@@ -5,7 +5,10 @@
 # admins. Nothing in this repo deploys automatically.
 #
 #   RG=rg-refunds LOCATION=eastus ENTRA_CLIENT_ID=... SQL_ADMIN_GROUP_ID=... \
-#   SQL_ADMIN_GROUP_NAME="Refund SQL Admins" [SQL_LOCATION=centralus] ./infra/deploy.sh
+#   SQL_ADMIN_GROUP_NAME="Refund SQL Admins" [ALERT_EMAIL=ops@example.com] ./infra/deploy.sh
+#
+# Keep Azure SQL in LOCATION. SQL_LOCATION is a fallback for when LOCATION refuses new SQL servers
+# (RegionDoesNotAllowProvisioning); see README.
 set -euo pipefail
 
 : "${RG:?set RG}" "${LOCATION:?set LOCATION}" "${ENTRA_CLIENT_ID:?set ENTRA_CLIENT_ID}"
@@ -20,8 +23,8 @@ params=(
   sqlAdminGroupObjectId="$SQL_ADMIN_GROUP_ID"
   sqlAdminGroupName="$SQL_ADMIN_GROUP_NAME"
 )
-# Optional: put Azure SQL in another region if LOCATION refuses new SQL servers.
 [[ -n "${SQL_LOCATION:-}" ]] && params+=(sqlLocation="$SQL_LOCATION")
+[[ -n "${ALERT_EMAIL:-}" ]] && params+=(alertEmail="$ALERT_EMAIL")
 
 az group create --name "$RG" --location "$LOCATION" -o none
 

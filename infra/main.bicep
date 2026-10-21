@@ -1,6 +1,6 @@
 // Refund Dashboard on Azure: Container Apps (API + web UI in one image) pulling from Azure
-// Container Registry, Azure SQL ledger database, immutable (WORM) blob storage for ledger
-// digests, and Log Analytics. Deploy with infra/deploy.sh (two passes: infra, then app).
+// Container Registry, Azure SQL ledger database with long-term backups, immutable (WORM) blob
+// storage for ledger digests, and Log Analytics + Application Insights with alerts. Deploy with infra/deploy.sh (two passes: infra, then app).
 targetScope = 'resourceGroup'
 
 @description('Short prefix for resource names (lowercase letters and digits).')
@@ -10,7 +10,7 @@ param namePrefix string = 'refunds'
 
 param location string = resourceGroup().location
 
-@description('Region for Azure SQL. Some regions (e.g. East US) restrict new SQL servers on new subscriptions.')
+@description('Region for Azure SQL. Keep it equal to location; only override when location refuses new SQL servers (see README).')
 param sqlLocation string = location
 
 @description('Entra ID tenant that issues tokens for the API.')
@@ -48,8 +48,16 @@ param dualApprovalThreshold string = '50.00'
 
 param maxRefundAmount string = '50000.00'
 
-@description('WORM retention for ledger digests. 2555 days is roughly 7 years.')
-param ledgerDigestRetentionDays int = 2555
+@description('Years to keep yearly full backups of the refund database (long-term retention). 0 disables. See docs/decisions.md.')
+@minValue(0)
+@maxValue(10)
+param backupRetentionYears int = 6
+
+@description('WORM retention for ledger digests; must cover backupRetentionYears. 2190 days = 6 years.')
+param ledgerDigestRetentionDays int = 2190
+
+@description('Email notified when an alert fires. Empty: alerts still fire and show in the portal.')
+param alertEmail string = ''
 
 param logRetentionDays int = 30
 
@@ -102,6 +110,16 @@ resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   }
 }
 
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: '${namePrefix}-appi-${suffix}'
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logs.id
+  }
+}
+
 // ---- Azure SQL (ledger) ----------------------------------------------------
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
@@ -142,6 +160,19 @@ resource sqlDb 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   properties: {
     // Ledger database: every table is a ledger table and this cannot be turned off later.
     isLedgerOn: true
+  }
+}
+
+// Yearly full backup (first full backup of January), kept backupRetentionYears. Point-in-time
+// restore covers the last 7 days. LTR backups outlive the server: delete them explicitly on teardown.
+resource sqlLongTermRetention 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2023-08-01-preview' = {
+  parent: sqlDb
+  name: 'default'
+  properties: {
+    weeklyRetention: 'PT0S'
+    monthlyRetention: 'PT0S'
+    yearlyRetention: backupRetentionYears == 0 ? 'PT0S' : 'P${backupRetentionYears}Y'
+    weekOfYear: 1
   }
 }
 
@@ -238,6 +269,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
         transport: 'auto'
         allowInsecure: false
       }
+      secrets: [
+        { name: 'appinsights-connection-string', value: appInsights.properties.ConnectionString }
+      ]
       registries: [
         {
           server: acr.properties.loginServer
@@ -261,6 +295,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'REFUND_MAX_REFUND_AMOUNT', value: maxRefundAmount }
             { name: 'REFUND_DATABASE_URL', value: 'mssql+pyodbc:///?odbc_connect=${uriComponent(odbc)}' }
             { name: 'REFUND_SQL_MANAGED_IDENTITY_CLIENT_ID', value: appIdentity.properties.clientId }
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
           ]
           probes: [
             {
@@ -289,6 +324,133 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
     }
   }
   dependsOn: [appCanPull]
+}
+
+// ---- Alerts ----------------------------------------------------------------
+
+resource alertGroup 'Microsoft.Insights/actionGroups@2023-01-01' = if (!empty(alertEmail)) {
+  name: '${namePrefix}-alerts-${suffix}'
+  location: 'global'
+  properties: {
+    groupShortName: 'refunds'
+    enabled: true
+    emailReceivers: [{ name: 'ops', emailAddress: alertEmail, useCommonAlertSchema: true }]
+  }
+}
+
+var metricAlertActions = empty(alertEmail) ? [] : [{ actionGroupId: alertGroup.id }]
+// DTU tiers (Basic, S0, P1...) report DTU %; vCore SKUs (GP_Gen5_2...) report CPU %.
+var sqlLoadMetric = contains(sqlSkuName, '_') ? 'cpu_percent' : 'dtu_consumption_percent'
+
+var metricAlerts = [
+  {
+    name: 'http-5xx'
+    description: 'More than 5 failed (5xx) API requests in 5 minutes.'
+    severity: 2
+    scope: appInsights.id
+    namespace: 'microsoft.insights/components'
+    metric: 'requests/failed'
+    aggregation: 'Count'
+    threshold: 5
+    window: 'PT5M'
+  }
+  {
+    name: 'sql-load'
+    description: 'Refund database above 80% of its compute limit for 15 minutes; consider a larger SKU.'
+    severity: 2
+    scope: sqlDb.id
+    namespace: 'Microsoft.Sql/servers/databases'
+    metric: sqlLoadMetric
+    aggregation: 'Average'
+    threshold: 80
+    window: 'PT15M'
+  }
+]
+
+resource metricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = [
+  for a in metricAlerts: {
+    name: '${namePrefix}-${a.name}-${suffix}'
+    location: 'global'
+    properties: {
+      description: a.description
+      severity: a.severity
+      enabled: true
+      scopes: [a.scope]
+      evaluationFrequency: 'PT5M'
+      windowSize: a.window
+      criteria: {
+        'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+        allOf: [
+          {
+            name: a.name
+            criterionType: 'StaticThresholdCriterion'
+            metricNamespace: a.namespace
+            metricName: a.metric
+            operator: 'GreaterThan'
+            threshold: a.threshold
+            timeAggregation: a.aggregation
+          }
+        ]
+      }
+      actions: metricAlertActions
+    }
+  }
+]
+
+// Crash-looping replicas never reach Application Insights (e.g. SQL login failures at startup).
+resource restartAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = if (deployApp) {
+  name: '${namePrefix}-restarts-${suffix}'
+  location: 'global'
+  properties: {
+    description: 'A replica has restarted more than twice; check the container console logs.'
+    severity: 1
+    enabled: true
+    scopes: [app.id]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'restarts'
+          criterionType: 'StaticThresholdCriterion'
+          metricNamespace: 'Microsoft.App/containerApps'
+          metricName: 'RestartCount'
+          operator: 'GreaterThan'
+          threshold: 2
+          timeAggregation: 'Maximum'
+        }
+      ]
+    }
+    actions: metricAlertActions
+  }
+}
+
+// Fires when GET /api/audit/verify finds a broken hash chain (logged by app/routers/audit.py).
+resource auditChainAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = {
+  name: '${namePrefix}-audit-chain-invalid-${suffix}'
+  location: location
+  properties: {
+    displayName: 'Audit chain verification failed'
+    description: 'The audit hash chain failed verification: possible tampering. Investigate immediately.'
+    severity: 0
+    enabled: true
+    scopes: [appInsights.id]
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: 'traces | where message startswith "audit chain verification failed"'
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 0
+          failingPeriods: { numberOfEvaluationPeriods: 1, minFailingPeriodsToAlert: 1 }
+        }
+      ]
+    }
+    actions: { actionGroups: empty(alertEmail) ? [] : [alertGroup.id] }
+  }
 }
 
 output acrName string = acr.name

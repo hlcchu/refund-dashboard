@@ -15,9 +15,11 @@ python scripts/azure_pricing.py --region uksouth
 | Container Apps (API + web UI) | $0.00 | $16.90 | $56.79 |
 | Container Registry | $5.07 | $5.07 | $20.28 |
 | Azure SQL (ledger database) | $4.90 | $14.72 | $73.61 |
-| Log Analytics | $0.00 | $6.90 | $57.50 |
+| Long-term SQL backups (6 yearly copies) | $0.15 | $0.60 | $3.00 |
+| Logs + Application Insights | $0.00 | $11.50 | $80.50 |
+| Alerts (1 log alert; metric alerts free) | $0.50 | $0.50 | $0.50 |
 | WORM digest storage | $0.15 | $0.15 | $0.15 |
-| **Total per month** | **~$10** | **~$44** | **~$208** |
+| **Total per month** | **~$11** | **~$49** | **~$235** |
 
 ## Scenario assumptions
 
@@ -30,7 +32,8 @@ python scripts/azure_pricing.py --region uksouth
 | HTTP requests | 50k | 1.5M | 6M |
 | Azure SQL | Basic (5 DTU) | S0 (10 DTU) | S2 (50 DTU) |
 | Container Registry | Basic | Basic | Standard |
-| Logs ingested | 1 GB | 8 GB | 30 GB |
+| Logs + telemetry ingested | 2 GB | 10 GB | 40 GB |
+| Database size (per yearly backup) | 0.5 GB | 2 GB | 10 GB |
 
 How the main lines are calculated:
 
@@ -43,6 +46,13 @@ How the main lines are calculated:
   history tables use storage that's included in the tier's allowance at this data volume.
 - **Log Analytics:** first 5 GB/month ingestion free, then $2.30/GB; 30-day retention (in the
   free retention window).
+- **Application Insights:** workspace-based, so telemetry is billed as Log Analytics ingestion
+  (included in the log volumes above). Health-probe requests are not traced.
+- **Long-term SQL backups:** one full copy per retained year (6), RA-GRS backup storage at
+  $0.05/GB-month. The bill grows during the first 6 years, then stays flat. LTR backups keep
+  billing after the server is deleted until you delete them.
+- **Alerts:** the three metric alerts fall within the free 10 monitored time series. The
+  audit-chain log alert runs every 15 minutes ($0.50/month).
 - **WORM storage:** ledger digests are small (well under 1 GB), and there are a few thousand
   writes a month.
 
@@ -52,8 +62,9 @@ How the main lines are calculated:
   included with Microsoft 365. Assigning roles **to groups** (rather than to individual users) needs
   Microsoft Entra ID P1 or P2, which many Microsoft 365 E3/E5 customers already have.
 - **Private networking:** VNet-integrated Container Apps environment, private endpoints for SQL and
-  storage, and NAT gateway. Recommended for production; price them with the script or the
-  Azure pricing calculator.
+  storage, and NAT gateway. Recommended for production; see
+  [path-to-production.md](path-to-production.md).
+- **Azure Front Door Premium + WAF** (out of scope): about $330/month base fee at list price.
 - **Defender for Cloud, Azure Monitor alerts, backup retention beyond the default, custom domains,
   certificates, outbound data transfer, support plans, and taxes.**
 - **EA/CSP discounts or reservations.** These lower the SQL cost in particular.

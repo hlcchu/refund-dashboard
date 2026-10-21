@@ -42,6 +42,17 @@ METERS = {
     "log_ingest_gb": ("Log Analytics", "Analytics Logs", "Analytics Logs Data Ingestion"),
     "blob_grs_gb": ("Storage", "Hot GRS", "Hot GRS Data Stored"),
     "blob_grs_write_10k": ("Storage", "Hot GRS", "Hot GRS Write Operations"),
+    "sql_ltr_ragrs_gb": ("SQL Database", "Backup RA-GRS", "Backup RA-GRS Data Stored"),
+    "log_alert_15min": (
+        "Azure Monitor",
+        "Alerts",
+        "Alerts System Log Monitored at 15 Minute Frequency",
+    ),
+}
+# Some meter names are shared by several products; pin the one infra/main.bicep uses.
+PRODUCTS = {
+    "Storage": "General Block Blob v2",
+    "SQL Database": "SQL Database - LTR Backup Storage",
 }
 
 
@@ -55,8 +66,8 @@ def fetch_prices(region: str) -> dict[str, float]:
         url = f"{API}?currencyCode=USD&$filter={urllib.parse.quote(flt)}"
         with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310 (fixed https URL)
             items = json.load(resp)["Items"]
-        if service == "Storage":
-            items = [i for i in items if i["productName"] == "General Block Blob v2"]
+        if key in ("blob_grs_gb", "blob_grs_write_10k", "sql_ltr_ragrs_gb"):
+            items = [i for i in items if i["productName"] == PRODUCTS[service]]
         # Lowest tier above zero (tiered meters such as Log Analytics list a free tier first).
         paid = sorted(
             (i for i in items if i["retailPrice"] > 0), key=lambda i: i["tierMinimumUnits"]
@@ -82,6 +93,10 @@ class Scenario:
     memory_gib: float = 1.0
     digest_gb: float = 1.0
     digest_writes_10k: float = 1.0  # ledger digests are uploaded every few minutes
+    db_gb: float = 1.0  # database size; one yearly LTR copy per retained year
+    ltr_years: int = 6
+    # Metric alerts (HTTP 5xx, SQL load, restarts) fall in the free 10 time series; one log alert.
+    log_alerts: int = 1
 
 
 SCENARIOS = [
@@ -94,7 +109,8 @@ SCENARIOS = [
         requests_millions=0.05,
         sql="sql_basic_day",
         acr="acr_basic_day",
-        log_gb=1,
+        log_gb=2,
+        db_gb=0.5,
     ),
     Scenario(
         name="Production (recommended)",
@@ -105,7 +121,8 @@ SCENARIOS = [
         requests_millions=1.5,
         sql="sql_s0_day",
         acr="acr_basic_day",
-        log_gb=8,
+        log_gb=10,
+        db_gb=2,
     ),
     Scenario(
         name="Production, high volume",
@@ -116,7 +133,8 @@ SCENARIOS = [
         requests_millions=6,
         sql="sql_s2_day",
         acr="acr_standard_day",
-        log_gb=30,
+        log_gb=40,
+        db_gb=10,
     ),
 ]
 
@@ -145,7 +163,9 @@ def estimate(s: Scenario, p: dict[str, float]) -> dict[str, float]:
         "Container Apps": compute,
         "Container Registry": p[s.acr] * DAYS_PER_MONTH,
         "Azure SQL (ledger)": p[s.sql] * DAYS_PER_MONTH,
-        "Log Analytics": max(s.log_gb - FREE_LOG_GB, 0) * p["log_ingest_gb"],
+        "Long-term SQL backups": s.db_gb * s.ltr_years * p["sql_ltr_ragrs_gb"],
+        "Logs + Application Insights": max(s.log_gb - FREE_LOG_GB, 0) * p["log_ingest_gb"],
+        "Alerts": s.log_alerts * p["log_alert_15min"],
         "WORM digest storage": s.digest_gb * p["blob_grs_gb"]
         + s.digest_writes_10k * p["blob_grs_write_10k"],
     }
@@ -170,7 +190,8 @@ def main() -> None:
     for s in SCENARIOS:
         print(
             f"- **{s.name}:** {s.description}; SQL {s.sql.split('_')[1].upper()}, "
-            f"ACR {s.acr.split('_')[1].title()}, {s.log_gb:g} GB logs/month."
+            f"ACR {s.acr.split('_')[1].title()}, {s.log_gb:g} GB logs/month, "
+            f"{s.db_gb:g} GB database x {s.ltr_years} yearly backups."
         )
     print("\nUnit prices used:")
     for key, value in prices.items():
