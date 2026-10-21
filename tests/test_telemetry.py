@@ -1,3 +1,4 @@
+import logging
 import sys
 import types
 
@@ -33,3 +34,7 @@ def test_enabled_with_connection_string(monkeypatch, fake_azure_monitor):
     assert len(fake_azure_monitor) == 1, "exporter is configured once per process"
     assert fake_azure_monitor[0]["logger_name"] == "app"
     assert first._is_instrumented_by_opentelemetry and second._is_instrumented_by_opentelemetry
+
+
+def test_azure_sdk_http_logging_is_quiet(app):
+    assert logging.getLogger("azure").getEffectiveLevel() == logging.WARNING
