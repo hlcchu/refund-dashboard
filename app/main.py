@@ -35,6 +35,8 @@ SECURITY_HEADERS = {
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     logging.basicConfig(level=logging.INFO)
+    # The Azure SDK logs every HTTP call (telemetry export, token fetches) at INFO.
+    logging.getLogger("azure").setLevel(logging.WARNING)
 
     app = FastAPI(
         title="Refund Dashboard API",
