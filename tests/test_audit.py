@@ -9,8 +9,8 @@ from app import audit
 
 def run_workflow(client, auth, make_refund):
     a = make_refund()
-    b = make_refund(amount="2000.00", order_ref="ORD-2")
-    c = make_refund(order_ref="ORD-3")
+    b = make_refund(amount="2000.00", order_ref="SUB-2")
+    c = make_refund(order_ref="SUB-3")
     client.post(f"/api/refunds/{a['id']}/approve", headers=auth("bob"))
     client.post(f"/api/refunds/{b['id']}/approve", headers=auth("bob"))
     client.post(f"/api/refunds/{b['id']}/approve", headers=auth("carol"))

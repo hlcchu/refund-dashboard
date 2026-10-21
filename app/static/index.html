@@ -30,8 +30,8 @@
       <h2>Raise refund <small>Maker</small></h2>
       <form id="create-form">
         <input name="customer_id" placeholder="Customer ID" required maxlength="64">
-        <input name="order_ref" placeholder="Order ref" required maxlength="64">
-        <input name="amount" placeholder="Amount e.g. 49.99" required inputmode="decimal">
+        <input name="order_ref" placeholder="Reference e.g. SUB-1001" required maxlength="64">
+        <input name="amount" placeholder="Amount e.g. 9.99" required inputmode="decimal">
         <input name="currency" placeholder="Currency" value="USD" required maxlength="3" size="4">
         <input name="reason" placeholder="Reason" required minlength="5" maxlength="1000" class="wide">
         <button type="submit">Submit for approval</button>
@@ -54,7 +54,7 @@
       </div>
       <table>
         <thead>
-          <tr><th>Created</th><th>Customer / Order</th><th>Amount</th><th>Reason</th>
+          <tr><th>Created</th><th>Customer / Reference</th><th>Amount</th><th>Reason</th>
             <th>Maker</th><th>Status</th><th>Approvals</th><th>Actions</th></tr>
         </thead>
         <tbody id="refund-rows"></tbody>

@@ -55,7 +55,9 @@ def test_maker_with_checker_role_cannot_approve_own_refund(app, client, auth, ma
 def test_maker_with_checker_role_cannot_reject_own_refund(app, client, auth, make_refund):
     refund = make_refund(user="erin")
     resp = client.post(
-        f"/api/refunds/{refund['id']}/reject", json={"reason": "changed mind"}, headers=auth("erin")
+        f"/api/refunds/{refund['id']}/reject",
+        json={"reason": "outside cooling-off period"},
+        headers=auth("erin"),
     )
     assert resp.status_code == 403
     assert audit_actions(app, refund["id"])[-1] == "refund.reject.denied"
@@ -132,7 +134,7 @@ def test_other_maker_cannot_cancel(client, auth, make_refund):
 
 def test_maker_only_sees_own_refunds(client, auth, make_refund):
     mine = make_refund(user="alice")
-    theirs = make_refund(user="erin", order_ref="ORD-2")
+    theirs = make_refund(user="erin", order_ref="SUB-2")
     ids = {r["id"] for r in client.get("/api/refunds", headers=auth("alice")).json()}
     assert ids == {mine["id"]}
     assert client.get(f"/api/refunds/{theirs['id']}", headers=auth("alice")).status_code == 404
@@ -143,7 +145,7 @@ def test_maker_only_sees_own_refunds(client, auth, make_refund):
 
 def test_status_filter(client, auth, make_refund):
     a = make_refund()
-    make_refund(order_ref="ORD-2")
+    make_refund(order_ref="SUB-2")
     client.post(f"/api/refunds/{a['id']}/approve", headers=auth("bob"))
     approved = client.get("/api/refunds?status=APPROVED", headers=auth("bob")).json()
     assert [r["id"] for r in approved] == [a["id"]]
@@ -155,7 +157,7 @@ def test_idempotency_key_replays_same_refund(client, auth):
         "order_ref": "O1",
         "amount": "25.00",
         "currency": "USD",
-        "reason": "Late delivery",
+        "reason": "Cashback reward not credited",
     }
     headers = {**auth("alice"), "Idempotency-Key": "abc-123"}
     first = client.post("/api/refunds", json=body, headers=headers)
@@ -185,7 +187,7 @@ def test_validation(client, auth, field, value):
         "order_ref": "O1",
         "amount": "10.00",
         "currency": "USD",
-        "reason": "Late delivery",
+        "reason": "Cashback reward not credited",
         field: value,
     }
     assert client.post("/api/refunds", json=body, headers=auth("alice")).status_code == 422
@@ -229,7 +231,7 @@ def test_concurrent_approvals_cannot_double_approve(tmp_path):
             settings,
             maker,
             RefundCreate(
-                customer_id="C", order_ref="O", amount="10.00", currency="USD", reason="Damaged"
+                customer_id="C", order_ref="O", amount="10.00", currency="USD", reason="Chargeback"
             ),
             None,
         )
