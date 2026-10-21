@@ -16,6 +16,7 @@ from app.db import (
 from app.routers import admin, audit, identity, refunds
 from app.seed import seed_demo_data
 from app.services import DomainError
+from app.telemetry import instrument_app
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -102,4 +103,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return FileResponse(STATIC_DIR / "index.html")
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    instrument_app(app)
     return app

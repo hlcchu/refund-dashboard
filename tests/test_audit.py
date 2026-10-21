@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
@@ -102,13 +104,15 @@ def _bypass_db_guard(app, stmt: str, params: dict | None = None) -> None:
         ("DELETE FROM audit_events WHERE seq = 3", 4, "sequence gap"),
     ],
 )
-def test_tampering_is_detected(app, client, auth, make_refund, stmt, bad_seq, error):
+def test_tampering_is_detected(app, client, auth, make_refund, stmt, bad_seq, error, caplog):
     run_workflow(client, auth, make_refund)
     _bypass_db_guard(app, stmt)
-    result = client.get("/api/audit/verify", headers=auth("frank")).json()
+    with caplog.at_level(logging.ERROR, logger="app.routers.audit"):
+        result = client.get("/api/audit/verify", headers=auth("frank")).json()
     assert result["valid"] is False
     assert result["first_invalid_seq"] == bad_seq
     assert result["error"] == error
+    assert any(r.getMessage().startswith("audit chain verification failed") for r in caplog.records)
 
 
 def test_rewriting_tail_with_recomputed_hash_still_breaks_successor(app, client, auth, make_refund):

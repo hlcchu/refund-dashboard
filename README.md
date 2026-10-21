@@ -118,8 +118,9 @@ Nothing is deployed by this repo. The templates create:
 
 ```
 Entra ID (sign-in, app roles) ──> Container Apps (API + UI, managed identity) ──> Azure SQL ledger DB
-                                       │  pulls image from Azure Container Registry     │ digests
-                                       └─ logs ─> Log Analytics          WORM Blob Storage <┘
+                                       │  pulls image from Azure Container Registry     │ digests  │ yearly backups
+                                       └─ logs/traces ─> Log Analytics +   WORM Blob Storage <┘   └─> LTR (6 years)
+                                                         Application Insights ─> alerts (email)
 ```
 
 1. `infra/entra/setup-app-registration.sh`: creates the app registration with the four app
@@ -127,19 +128,23 @@ Entra ID (sign-in, app roles) ──> Container Apps (API + UI, managed identity
 2. `RG=... LOCATION=... ENTRA_CLIENT_ID=... SQL_ADMIN_GROUP_ID=... SQL_ADMIN_GROUP_NAME=... infra/deploy.sh`:
    deploys the infrastructure, builds the image in ACR with `az acr build` (falling back to local
    Docker where ACR Tasks are blocked, as on new/trial subscriptions), then deploys the Container
-   App. If the region refuses new SQL servers (e.g. East US on new subscriptions), add
-   `SQL_LOCATION=centralus`.
+   App. Add `ALERT_EMAIL=...` to get alert emails. If the region refuses new SQL servers
+   (`RegionDoesNotAllowProvisioning`, seen in East US on a new subscription), deploy everything to
+   a region that accepts them, or request access via Azure support. `SQL_LOCATION=<region>` puts
+   only SQL elsewhere; it's a fallback for tests, not production.
 3. Run `infra/sql/001_schema.sql`, then `002_app_user.sql` (grants with no DELETE; the user is
    created from the identity's client ID, so no Directory Readers role is needed), add the app URL
    as a redirect URI, and assign users or groups to roles.
 4. Lock the WORM policy once verified. Locking is irreversible.
 
-The parameters are in `infra/main.bicepparam`, e.g. `minReplicas`, SQL SKU and threshold.
-For production, add VNet integration and private endpoints, and disable public SQL access.
+The parameters are in `infra/main.bicepparam`, e.g. `minReplicas`, SQL SKU, threshold,
+`backupRetentionYears` (default 6) and `alertEmail`. Before production, work through
+[docs/path-to-production.md](docs/path-to-production.md): network lockdown, Entra roles, locking
+WORM, and teardown of long-term backups.
 
 ## Cost
 
-Roughly **$10/month** for a demo or pilot and **~$44/month** for a recommended production setup
+Roughly **$11/month** for a demo or pilot and **~$49/month** for a recommended production setup
 (East US list prices). See [docs/pricing.md](docs/pricing.md) for the assumptions, or
 `python scripts/azure_pricing.py --region <region>` to recalculate.
 
@@ -148,3 +153,6 @@ Roughly **$10/month** for a demo or pilot and **~$44/month** for a recommended p
 - Paying out refunds or integrating with payment or ERP systems.
 - Per-currency limits. There's one threshold, applied to the amount in any currency.
 - Notifications, e.g. Teams or email to checkers.
+- Azure Front Door with a web application firewall (the app is internal; see
+  [docs/path-to-production.md](docs/path-to-production.md#4-edge-protection-azure-front-door-with-a-web-application-firewall-out-of-scope)).
+- Private networking (VNet, private endpoints) in the default templates; documented in the path to production.

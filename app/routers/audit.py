@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,6 +9,8 @@ from app.auth import ROLE_FINANCE, Principal, require_any_role
 from app.deps import get_session
 from app.models import AuditEvent
 from app.schemas import AuditEventOut, ChainVerificationOut
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/audit", tags=["audit"])
 
@@ -33,6 +37,14 @@ def verify(
     session: Session = Depends(get_session),
 ) -> ChainVerificationOut:
     result = audit.verify_chain(session)
+    if not result.valid:
+        # Message prefix is matched by the "audit chain invalid" alert in infra/main.bicep.
+        logger.error(
+            "audit chain verification failed: %s at seq %s (checked %s events)",
+            result.error,
+            result.first_invalid_seq,
+            result.events_checked,
+        )
     return ChainVerificationOut(
         valid=result.valid,
         events_checked=result.events_checked,
