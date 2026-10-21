@@ -10,6 +10,9 @@ param namePrefix string = 'refunds'
 
 param location string = resourceGroup().location
 
+@description('Region for Azure SQL. Some regions (e.g. East US) restrict new SQL servers on new subscriptions.')
+param sqlLocation string = location
+
 @description('Entra ID tenant that issues tokens for the API.')
 param entraTenantId string = tenant().tenantId
 
@@ -103,7 +106,7 @@ resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
   name: sqlServerName
-  location: location
+  location: sqlLocation
   identity: { type: 'SystemAssigned' }
   properties: {
     minimalTlsVersion: '1.2'
@@ -134,7 +137,7 @@ resource sqlAllowAzure 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' 
 resource sqlDb 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   parent: sqlServer
   name: sqlDbName
-  location: location
+  location: sqlLocation
   sku: { name: sqlSkuName }
   properties: {
     // Ledger database: every table is a ledger table and this cannot be turned off later.
@@ -216,7 +219,7 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-var odbc = 'Driver={ODBC Driver 18 for SQL Server};Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=${sqlDbName};Encrypt=yes;TrustServerCertificate=no;Authentication=ActiveDirectoryMsi;UID=${appIdentity.properties.clientId};'
+var odbc = 'Driver={ODBC Driver 18 for SQL Server};Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=${sqlDbName};Encrypt=yes;TrustServerCertificate=no;'
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
   name: appName
@@ -257,6 +260,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'REFUND_DUAL_APPROVAL_THRESHOLD', value: dualApprovalThreshold }
             { name: 'REFUND_MAX_REFUND_AMOUNT', value: maxRefundAmount }
             { name: 'REFUND_DATABASE_URL', value: 'mssql+pyodbc:///?odbc_connect=${uriComponent(odbc)}' }
+            { name: 'REFUND_SQL_MANAGED_IDENTITY_CLIENT_ID', value: appIdentity.properties.clientId }
           ]
           probes: [
             {
@@ -290,6 +294,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
 output acrName string = acr.name
 output acrLoginServer string = acr.properties.loginServer
 output appIdentityName string = appIdentity.name
+output appIdentityClientId string = appIdentity.properties.clientId
 output appUrl string = deployApp ? 'https://${app!.properties.configuration.ingress.fqdn}' : ''
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output sqlDatabaseName string = sqlDbName

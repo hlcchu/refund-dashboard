@@ -5,3 +5,4 @@ pydantic>=2.7,<3
 pydantic-settings>=2.3,<3
 pyjwt[crypto]>=2.8,<3
 pyodbc>=5.1,<6
+azure-identity>=1.17,<2
