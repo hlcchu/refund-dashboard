@@ -18,13 +18,20 @@ def _dev(user: str) -> Principal:
 
 
 DEMO_REFUNDS = [
-    ("alice", "CUST-1001", "ORD-58213", "19.99", "Item arrived damaged", "approve:bob"),
-    ("alice", "CUST-1002", "ORD-58377", "120.00", "Duplicate charge on card", "approve:bob"),
-    ("erin", "CUST-1003", "ORD-58410", "45.50", "Late delivery goodwill", None),
-    ("alice", "CUST-1004", "ORD-58502", "250.00", "Order cancelled before dispatch", None),
-    ("erin", "CUST-1005", "ORD-58611", "12.00", "Wrong size shipped", "reject:carol"),
-    ("alice", "CUST-1006", "ORD-58720", "75.25", "Missing items in parcel", None),
-    ("erin", "CUST-1007", "ORD-58799", "8.99", "Customer changed mind", "cancel"),
+    ("alice", "CUST-1001", "SUB-58213", "9.99", "Pro plan billed twice this month", "approve:bob"),
+    (
+        "alice",
+        "CUST-1002",
+        "SUB-58377",
+        "119.88",
+        "Annual Premium plan cancelled within 14-day cooling-off period",
+        "approve:bob",
+    ),
+    ("erin", "CUST-1003", "RWD-58410", "45.50", "Cashback reward not credited for March", None),
+    ("alice", "CUST-1004", "DSP-58502", "250.00", "Card dispute: merchant did not deliver", None),
+    ("erin", "CUST-1005", "RWD-58611", "12.00", "Referral bonus claim", "reject:carol"),
+    ("alice", "CUST-1006", "DSP-58720", "75.25", "Unrecognised card transaction", None),
+    ("erin", "CUST-1007", "SUB-58799", "4.99", "Trial auto-renewed after cancellation", "cancel"),
 ]
 
 
@@ -63,7 +70,9 @@ def _create_and_decide(
         return
     action, _, user = outcome.partition(":")
     if action == "approve":
-        services.approve_refund(session, _dev(user), refund.id, "Verified with order history", None)
+        services.approve_refund(
+            session, _dev(user), refund.id, "Verified against billing history", None
+        )
     elif action == "reject":
         services.reject_refund(session, _dev(user), refund.id, "Outside refund policy", None)
     elif action == "cancel":

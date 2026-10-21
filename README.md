@@ -1,6 +1,7 @@
 # Refund Dashboard
 
-A standalone refund-approval app that replaces a Power Apps workflow. One container serves a
+A standalone refund-approval app that replaces a Power Apps workflow, shown here for a fintech
+subscription service: subscription refunds, card disputes and rewards/cashback corrections. One container serves a
 Python (FastAPI) API and a web dashboard. It enforces maker-checker segregation of duties and
 role-based access on the server, and writes an immutable, tamper-evident audit trail. It ships
 with Azure infrastructure-as-code for customers to deploy themselves, plus a local demo that

@@ -11,7 +11,7 @@ REFUND = {
     "order_ref": "O1",
     "amount": "10.00",
     "currency": "USD",
-    "reason": "Duplicate charge",
+    "reason": "Duplicate subscription charge",
 }
 
 

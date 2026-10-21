@@ -43,10 +43,10 @@ def make_refund(client, auth):
     def _make(user: str = "alice", amount: str = "25.00", **overrides) -> dict:
         body = {
             "customer_id": "CUST-1",
-            "order_ref": "ORD-1",
+            "order_ref": "SUB-1",
             "amount": amount,
             "currency": "USD",
-            "reason": "Item arrived damaged",
+            "reason": "Duplicate subscription charge",
             **overrides,
         }
         resp = client.post("/api/refunds", json=body, headers=auth(user))
