@@ -17,6 +17,9 @@ docker compose up --build
 # open http://localhost:8000  (pick a demo user top-right, or use ?as=frank)
 ```
 
+For a click-by-click walkthrough as each role, with expected results, see
+[docs/local-demo-guide.md](docs/local-demo-guide.md).
+
 The demo uses SQLite with a few sample refunds. Tokens are minted locally for these demo users:
 
 | User | Roles | Try |
